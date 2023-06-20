@@ -1,0 +1,89 @@
+version: "3"
+
+services:
+
+  db:
+    image: mariadb:10.4
+    container_name: ${PREFIX}_db
+    restart: always
+    environment:
+      - MYSQL_ROOT_USER=${MYSQL_ROOT_USER}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    volumes:
+      - ${DB_PATH_HOST}:/var/lib/mysql
+    ports:
+      - 3307:3306
+    networks:
+      - memcached
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: ${PREFIX}_phpmyadmin
+    ports:
+      - 8081:80
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=db
+    depends_on:
+      - db
+
+  php:
+    build:
+      context: ./php
+      args:
+        TIMEZONE: ${TIMEZONE}
+    volumes:
+      - ./${PROJECT_NAME}:/var/www/${PROJECT_NAME}/
+    networks:
+      - memcached
+  nginx:
+    build:
+      context: ./nginx
+    volumes:
+      - ./${PROJECT_NAME}:/var/www/${PROJECT_NAME}/
+    environment:
+        PROJECT_NAME: $PROJECT_NAME
+    ports:
+      - 8080:80
+    networks:
+      - memcached
+    env_file:
+      - .env.nginx
+
+  memcached-server1:
+    image: memcached:latest
+    container_name: memcached1
+    ports:
+      - 11212:11211
+    networks:
+      - memcached
+
+  memcached-server2:
+    image: memcached:${MEMCACHED_VERSION}
+    container_name: ${MEMCACHED_HOST}2
+    environment:
+      MEMCACHED_CACHE_SIZE: 128
+    ports:
+      - 11213:11211
+    networks:
+      - memcached
+
+  memcached-server3:
+    image: memcached:${MEMCACHED_VERSION}
+    container_name: ${MEMCACHED_HOST}3
+    environment:
+      MEMCACHED_CACHE_SIZE: 128
+    ports:
+      - 11214:11211
+    networks:
+    - memcached
+
+volumes:
+#  symfony_dockerized_app_sync:
+#    external: true
+  db-data:
+
+networks:
+  memcached:
